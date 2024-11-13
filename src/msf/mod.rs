@@ -49,8 +49,8 @@ enum StreamTable<'s> {
         stream_table_location_location: PageList,
     },
 
-    /// Given the HeaderOnly information, we can do an initial read to get the actual location of
-    /// the stream table as a PageList.
+    /// Given the `HeaderOnly` information, we can do an initial read to get the actual location of
+    /// the stream table as a `PageList`.
     TableFound { stream_table_location: PageList },
 
     // Given the table location, we can access the stream table itself
@@ -281,7 +281,7 @@ mod big {
                 let mut page_numbers_to_skip: usize = 0;
                 for _ in 0..stream_number {
                     let bytes = stream_table.parse_u32()?;
-                    if bytes == u32::max_value() {
+                    if bytes == u32::MAX {
                         // stream is not present, ergo nothing to skip
                     } else {
                         page_numbers_to_skip += header.pages_needed_to_store(bytes as usize);
@@ -290,7 +290,7 @@ mod big {
 
                 // read our stream's size
                 bytes_in_stream = stream_table.parse_u32()?;
-                if bytes_in_stream == u32::max_value() {
+                if bytes_in_stream == u32::MAX {
                     return Err(Error::StreamNotFound(stream_number));
                 }
                 let pages_in_stream = header.pages_needed_to_store(bytes_in_stream as usize);
@@ -442,10 +442,11 @@ mod small {
             // ensure the stream table is available
             let StreamTable::Available {
                 ref stream_table_view,
-            } = self.stream_table else {
+            } = self.stream_table
+            else {
                 unreachable!()
             };
-        
+
             let stream_table_slice = stream_table_view.as_slice();
             let mut stream_table = ParseBuffer::from(stream_table_slice);
 
@@ -480,7 +481,7 @@ mod small {
                 let bytes = stream_table.parse_u32()?;
                 let _reserved = stream_table.parse_u32()?;
 
-                if bytes == u32::max_value() {
+                if bytes == u32::MAX {
                     // stream is not present, ergo nothing to skip
                 } else {
                     page_numbers_to_skip += self.header.pages_needed_to_store(bytes as usize);
@@ -491,7 +492,7 @@ mod small {
             let bytes_in_stream = stream_table.parse_u32()?;
             let _reserved = stream_table.parse_u32()?;
 
-            if bytes_in_stream == u32::max_value() {
+            if bytes_in_stream == u32::MAX {
                 return Err(Error::StreamNotFound(stream_number));
             }
 

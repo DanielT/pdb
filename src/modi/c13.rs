@@ -38,7 +38,9 @@ enum DebugSubsectionKind {
 impl DebugSubsectionKind {
     fn parse(value: u32) -> Result<Option<Self>> {
         if (0xf1..=0xfd).contains(&value) {
-            Ok(Some(unsafe { std::mem::transmute(value) }))
+            Ok(Some(unsafe {
+                std::mem::transmute::<u32, DebugSubsectionKind>(value)
+            }))
         } else if value == constants::DEBUG_S_IGNORE {
             Ok(None)
         } else {
@@ -229,7 +231,7 @@ impl<'a> DebugInlineeLinesSubsection<'a> {
 struct DebugLinesHeader {
     /// Section offset of this line contribution.
     offset: PdbInternalSectionOffset,
-    /// See LineFlags enumeration.
+    /// See `LineFlags` enumeration.
     flags: u16,
     /// Code size of this line contribution.
     code_size: u32,
@@ -588,7 +590,7 @@ impl FileChecksumKind {
     /// Parses the checksum kind from its raw value.
     fn parse(value: u8) -> Result<Self> {
         if value <= 3 {
-            Ok(unsafe { std::mem::transmute(value) })
+            Ok(unsafe { std::mem::transmute::<u8, FileChecksumKind>(value) })
         } else {
             Err(Error::UnimplementedFileChecksumKind(value))
         }
@@ -945,17 +947,20 @@ impl CrossModuleExports {
 
     /// Returns the number of exported types or ids from this module.
     #[inline]
+    #[must_use]
     pub fn len(&self) -> usize {
         self.raw_exports.len()
     }
 
     /// Returns `true` if this module does not export types or ids.
     #[inline]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.raw_exports.is_empty()
     }
 
     /// Returns an iterator over all cross scope exports.
+    #[must_use]
     pub fn exports(&self) -> CrossModuleExportIter<'_> {
         CrossModuleExportIter {
             exports: self.raw_exports.iter(),
@@ -1238,6 +1243,7 @@ pub struct Inlinee<'a>(InlineeSourceLine<'a>);
 
 impl<'a> Inlinee<'a> {
     /// The index of this inlinee in the `IdInformation` stream (IPI).
+    #[must_use]
     pub fn index(&self) -> IdIndex {
         self.0.inlinee
     }
@@ -1247,6 +1253,7 @@ impl<'a> Inlinee<'a> {
     /// Note that line records are not guaranteed to be ordered by source code offset. If a
     /// monotonic order by `PdbInternalSectionOffset` or `Rva` is required, the lines have to be
     /// sorted manually.
+    #[must_use]
     pub fn lines(
         &self,
         parent_offset: PdbInternalSectionOffset,

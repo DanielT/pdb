@@ -40,12 +40,14 @@ pub struct Symbol<'t> {
 impl<'t> Symbol<'t> {
     /// The index of this symbol in the containing symbol stream.
     #[inline]
+    #[must_use]
     pub fn index(&self) -> SymbolIndex {
         self.index
     }
 
     /// Returns the kind of symbol identified by this Symbol.
     #[inline]
+    #[must_use]
     pub fn raw_kind(&self) -> SymbolKind {
         debug_assert!(self.data.len() >= 2);
         self.data.pread_with(0, LE).unwrap_or_default()
@@ -54,6 +56,7 @@ impl<'t> Symbol<'t> {
     /// Returns the raw bytes of this symbol record, including the symbol type and extra data, but
     /// not including the preceding symbol length indicator.
     #[inline]
+    #[must_use]
     pub fn raw_bytes(&self) -> &'t [u8] {
         self.data
     }
@@ -68,6 +71,7 @@ impl<'t> Symbol<'t> {
     ///
     /// If `true`, this symbol has a `parent` and an `end` field, which contains the offset of the
     /// corrsponding end symbol.
+    #[must_use]
     pub fn starts_scope(&self) -> bool {
         matches!(
             self.raw_kind(),
@@ -110,6 +114,7 @@ impl<'t> Symbol<'t> {
     }
 
     /// Returns whether this symbol declares the end of a scope.
+    #[must_use]
     pub fn ends_scope(&self) -> bool {
         matches!(self.raw_kind(), S_END | S_PROC_ID_END | S_INLINESITE_END)
     }
@@ -229,7 +234,7 @@ pub enum SymbolData<'t> {
     SeparatedCode(SeparatedCodeSymbol),
     /// OEM information.
     OEM(OemSymbol<'t>),
-    /// Environment block split off from S_COMPILE2.
+    /// Environment block split off from `S_COMPILE2`.
     EnvBlock(EnvBlockSymbol<'t>),
     /// A COFF section in a PE executable.
     Section(SectionSymbol<'t>),
@@ -239,42 +244,43 @@ pub enum SymbolData<'t> {
 
 impl<'t> SymbolData<'t> {
     /// Returns the name of this symbol if it has one.
+    #[must_use]
     pub fn name(&self) -> Option<RawString<'t>> {
         match self {
-            Self::ScopeEnd => None,
             Self::ObjName(data) => Some(data.name),
-            Self::RegisterVariable(_) => None,
             Self::Constant(data) => Some(data.name),
             Self::UserDefinedType(data) => Some(data.name),
-            Self::MultiRegisterVariable(_) => None,
             Self::Data(data) => Some(data.name),
             Self::Public(data) => Some(data.name),
             Self::Procedure(data) => Some(data.name),
             Self::ManagedProcedure(data) => data.name,
             Self::ThreadStorage(data) => Some(data.name),
-            Self::CompileFlags(_) => None,
             Self::UsingNamespace(data) => Some(data.name),
             Self::ProcedureReference(data) => data.name,
             Self::DataReference(data) => data.name,
             Self::AnnotationReference(data) => Some(data.name),
             Self::TokenReference(data) => Some(data.name),
-            Self::Trampoline(_) => None,
             Self::Export(data) => Some(data.name),
             Self::Local(data) => Some(data.name),
             Self::ManagedSlot(data) => Some(data.name),
-            Self::InlineSite(_) => None,
-            Self::BuildInfo(_) => None,
-            Self::InlineSiteEnd => None,
-            Self::ProcedureEnd => None,
             Self::Label(data) => Some(data.name),
             Self::Block(data) => Some(data.name),
             Self::RegisterRelative(data) => Some(data.name),
             Self::Thunk(data) => Some(data.name),
-            Self::SeparatedCode(_) => None,
-            Self::OEM(_) => None,
-            Self::EnvBlock(_) => None,
             Self::Section(data) => Some(data.name),
             Self::CoffGroup(data) => Some(data.name),
+            Self::ScopeEnd
+            | Self::RegisterVariable(_)
+            | Self::MultiRegisterVariable(_)
+            | Self::CompileFlags(_)
+            | Self::Trampoline(_)
+            | Self::InlineSite(_)
+            | Self::BuildInfo(_)
+            | Self::InlineSiteEnd
+            | Self::ProcedureEnd
+            | Self::SeparatedCode(_)
+            | Self::OEM(_)
+            | Self::EnvBlock(_) => None,
         }
     }
 }
@@ -621,7 +627,7 @@ pub struct TokenReferenceSymbol<'t> {
     pub name: RawString<'t>,
 }
 
-impl<'t> TryFromCtx<'t, SymbolKind> for TokenReferenceSymbol <'t> {
+impl<'t> TryFromCtx<'t, SymbolKind> for TokenReferenceSymbol<'t> {
     type Error = Error;
 
     fn try_from_ctx(this: &'t [u8], kind: SymbolKind) -> Result<(Self, usize)> {
@@ -904,11 +910,11 @@ impl<'t> TryFromCtx<'t, SymbolKind> for ProcedureSymbol<'t> {
 }
 
 /// A managed procedure, such as a function or method.
-/// 
+///
 /// Symbol kinds:
 /// - `S_GMANPROC`, `S_GMANPROCIA64` for global procedures
 /// - `S_LMANPROC`, `S_LMANPROCIA64` for local procedures
-/// 
+///
 /// `S_GMANPROCIA64` and `S_LMANPROCIA64` are only mentioned, there is no available source.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ManagedProcedureSymbol<'t> {
@@ -1293,7 +1299,7 @@ impl<'t> TryFromCtx<'t, SymbolKind> for LocalSymbol<'t> {
 }
 
 /// A managed local variable slot.
-/// 
+///
 /// Symbol kind `S_MANSLOT`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ManagedSlotSymbol<'t> {
@@ -1586,7 +1592,7 @@ const CV_SEPCODEFLAG_RETURNS_TO_PARENT: u32 = 0x02;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SeparatedCodeFlags {
-    /// S_SEPCODE doubles as lexical scope.
+    /// `S_SEPCODE` doubles as lexical scope.
     pub islexicalscope: bool,
     /// code frag returns to parent.
     pub returnstoparent: bool,
@@ -1658,7 +1664,7 @@ impl<'t> TryFromCtx<'t, SymbolKind> for SeparatedCodeSymbol {
 }
 
 /// An OEM symbol.
-/// 
+///
 /// Symbol kind `S_OEM`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct OemSymbol<'t> {
@@ -1667,7 +1673,7 @@ pub struct OemSymbol<'t> {
     /// Type index.
     pub type_index: TypeIndex,
     /// User data with forced 4B-alignment.
-    /// 
+    ///
     /// An array of variable size, currently only the first 4B are parsed.
     pub rgl: u32,
 }
@@ -1699,7 +1705,7 @@ pub struct EnvBlockSymbol<'t> {
     pub rgsz: Vec<RawString<'t>>,
 }
 
-impl<'t> TryFromCtx<'t, SymbolKind> for EnvBlockSymbol <'t> {
+impl<'t> TryFromCtx<'t, SymbolKind> for EnvBlockSymbol<'t> {
     type Error = Error;
 
     fn try_from_ctx(this: &'t [u8], kind: SymbolKind) -> Result<(Self, usize)> {
@@ -1739,11 +1745,10 @@ pub struct SectionSymbol<'t> {
     /// Section characteristics.
     pub characteristics: u32,
     /// Section name.
-    pub name: RawString<'t>
-
+    pub name: RawString<'t>,
 }
 
-impl<'t> TryFromCtx<'t, SymbolKind> for SectionSymbol <'t> {
+impl<'t> TryFromCtx<'t, SymbolKind> for SectionSymbol<'t> {
     type Error = Error;
 
     fn try_from_ctx(this: &'t [u8], kind: SymbolKind) -> Result<(Self, usize)> {
@@ -1756,7 +1761,7 @@ impl<'t> TryFromCtx<'t, SymbolKind> for SectionSymbol <'t> {
             rva: buf.parse()?,
             cb: buf.parse()?,
             characteristics: buf.parse()?,
-            name: parse_symbol_name(&mut buf, kind)?
+            name: parse_symbol_name(&mut buf, kind)?,
         };
 
         Ok((symbol, buf.pos()))
@@ -1775,13 +1780,12 @@ pub struct CoffGroupSymbol<'t> {
     /// Symbol offset.
     pub offset: PdbInternalSectionOffset,
     /// Symbol segment.
-    pub segment: u16,    
+    pub segment: u16,
     /// COFF group name.
-    pub name: RawString<'t>
-
+    pub name: RawString<'t>,
 }
 
-impl<'t> TryFromCtx<'t, SymbolKind> for CoffGroupSymbol <'t> {
+impl<'t> TryFromCtx<'t, SymbolKind> for CoffGroupSymbol<'t> {
     type Error = Error;
 
     fn try_from_ctx(this: &'t [u8], kind: SymbolKind) -> Result<(Self, usize)> {
@@ -1792,7 +1796,7 @@ impl<'t> TryFromCtx<'t, SymbolKind> for CoffGroupSymbol <'t> {
             characteristics: buf.parse()?,
             offset: buf.parse()?,
             segment: buf.parse()?,
-            name: parse_symbol_name(&mut buf, kind)?
+            name: parse_symbol_name(&mut buf, kind)?,
         };
 
         Ok((symbol, buf.pos()))
@@ -1842,16 +1846,19 @@ pub struct SymbolTable<'s> {
 
 impl<'s> SymbolTable<'s> {
     /// Parses a symbol table from raw stream data.
+    #[must_use]
     pub(crate) fn new(stream: Stream<'s>) -> Self {
         SymbolTable { stream }
     }
 
     /// Returns an iterator that can traverse the symbol table in sequential order.
+    #[must_use]
     pub fn iter(&self) -> SymbolIter<'_> {
         SymbolIter::new(self.stream.parse_buffer())
     }
 
     /// Returns an iterator over symbols starting at the given index.
+    #[must_use]
     pub fn iter_at(&self, index: SymbolIndex) -> SymbolIter<'_> {
         let mut iter = self.iter();
         iter.seek(index);
